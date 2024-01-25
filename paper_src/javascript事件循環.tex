@@ -1,0 +1,19 @@
+\section{javascript事件循環}
+
+
+\begin{figure}[h]
+	\begin{tikzpicture}
+
+
+		\node[draw, rectangle] at (0,0) {123};
+
+
+		\stack{5cm}{0cm}{2cm}{1cm}{0.3cm}{0.75mm}{5}
+		\stackName{5cm}{0cm}{1cm}{0.3cm}{8}{調用棧}
+		\stackArrow{5cm}{0cm}{1cm}{0.3cm}{0.75mm}{2}{0.5cm}
+		
+		\queue{7cm}{1cm}{3cm}{0.5cm}{0.3cm}{0.75mm}{3}
+		\queueName{7cm}{1cm}{3cm}{0.3cm}{8}{隊列}
+		\queueArrow{7cm}{1cm}{0.5cm}{0.3cm}{0.75mm}{1}{0.5cm}
+	\end{tikzpicture}
+\end{figure}

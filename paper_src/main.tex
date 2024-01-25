@@ -1,0 +1,298 @@
+\documentclass{report}
+
+
+% 註釋模組
+\usepackage{comment}
+
+% 中文設定
+\usepackage{xeCJK}
+    \setCJKmainfont[AutoFakeBold=3]{標楷體}
+    \XeTeXlinebreaklocale "zh"             
+    \XeTeXlinebreakskip = 0pt plus 1pt
+    \setCJKmonofont{標楷體} % 设置 CJK 字体族，避免使用 verbatim 時會報錯
+
+% 更多顏色設定
+\usepackage{xcolor}
+    \definecolor{lightgray}{rgb}{0.98, 0.98, 0.98}
+
+% 可以貼程式碼，並且有語法高亮
+\usepackage{listings}
+    % 設定程式碼區塊的樣式
+    \lstset{
+        language=C++,
+        backgroundcolor=\color{lightgray},
+        frame=single,
+        numbers=left,
+        captionpos=b,
+        breaklines=true
+    }
+    \renewcommand{\lstlistingname}{程式碼}
+
+
+    % 添加 JavaScript 語言定義
+    \lstdefinelanguage{JavaScript}{
+    morekeywords={break, case, catch, continue, debugger, default, delete, do, else, finally, for, function, if, in, instanceof, new, return, switch, this, throw, try, typeof, var, void, while, with},
+    morecomment=[s]{/*}{*/},
+    morecomment=[l]//,
+    morestring=[b]',
+    morestring=[b]"
+}
+
+% 浮動體包
+\usepackage{float}
+
+%引用 geometry 模組 設定文件邊界為 2cm 大小為 A4
+\usepackage[margin = 2cm, a4paper]{geometry}
+
+%引用 setspace 模組
+\usepackage{setspace}
+    %設定行距為2倍
+    \doublespacing
+    %設定段落間距為 6 pt
+    \setlength{\parskip}{6pt}
+    
+%引用 moresize 模組，提供更多字體大小選項
+\usepackage{moresize}
+
+% 引入 caption 宏包
+\usepackage{caption}
+    % 將圖片標籤的 Figure 改為 圖
+    \captionsetup[figure]{name={圖}}  
+
+\usepackage{graphicx} % Required for inserting images
+
+\usepackage{tikz}
+    \usetikzlibrary{positioning}
+    \usetikzlibrary{matrix}
+    \usetikzlibrary{arrows}
+\usepackage{ifthen}
+
+\input{src/tikz_function.tex}
+
+
+
+\usepackage{pgfplots}
+    \pgfplotsset{compat=1.18}
+
+
+\title{tikz}
+\author{YI-CHENG LI}
+\date{November 2023}
+
+
+
+
+
+
+\begin{document}
+
+\maketitle
+
+%產生目錄
+\renewcommand{\contentsname}{目錄}
+\tableofcontents
+
+%產生圖目錄
+\renewcommand{\listfigurename}{圖目錄}
+\listoffigures
+
+%產生程式碼目錄
+\renewcommand{\lstlistlistingname}{程式碼目錄}
+\lstlistoflistings 
+%換頁
+\clearpage
+
+
+
+
+\chapter{背景知識}
+\section{消息隊列}
+\input{src/javascript事件循環.tex}
+\section{Web Workers}
+javascript 原本的設計是基於單線程實現的，HTML5提供了Web Workers API 使 javascript 也可以用運用多線程的能力
+javascript 對於異步任務或是平行運算是基於事件循環來實現的，其機制如下
+\clearpage
+
+\chapter{運算伺服器}
+
+運算伺服器是整個繪圖系統的核心，保存著系統當前所有的圖形資料及狀態，根據收到的指令，對圖形進行增刪查改等操作。運算伺服器引用了CGAL(Computational Geometry Algorithms Library )幾何算法庫，用來對圖形進行幾何運算。
+
+幾何運算包含非常多種的演算法，每種演算法所消耗的時間都不一樣，而用戶何時使用何種算法也是不確定的，為了避免整個系統在運算伺服器產生堵塞，需要對其進行解藕設計，在此我們利用Linux系統內建的消息隊列來實現，如圖~\ref{運算伺服器的架構}。
+\begin{figure}[!h]
+    \centering
+    \begin{tikzpicture}
+    
+        \node[name=接收進程, draw, align=center] at (0,0) {接收};
+    
+        \matrix (input) [
+        matrix of nodes, 
+        right=1cm of 接收進程,
+        nodes in empty cells, 
+        nodes={draw, minimum size=0.3cm}
+        ] {
+          &   &   &   &   &   &   &   &  \\
+        };
+        \node[above=0.2cm] at (input.north) {輸入隊列};
+    
+        \node[name=幾何計算, draw, align=center, right=1cm of input] {幾何計算};
+    
+        \matrix (output) [
+        matrix of nodes, 
+        right=1cm of 幾何計算,
+        nodes in empty cells, 
+        nodes={draw, minimum size=0.3cm}
+        ] {
+          &   &   &   &   &   &   &   &  \\
+        };
+        \node[above=0.2cm] at (output.north) {輸出隊列};
+    
+        \node[name=送出進程, draw, align=center, right=1cm of output] {發送};
+
+
+        \draw[->, shorten <=2mm,  shorten >=2mm] (接收進程.east) -- (input-1-1.west);
+        \draw[->, shorten <=2mm,  shorten >=2mm] (input-1-9.east) -- (幾何計算.west);
+        \draw[->, shorten <=2mm,  shorten >=2mm] (幾何計算.east) -- (output-1-1.west);
+        \draw[->, shorten <=2mm,  shorten >=2mm] (output-1-9.east) -- (送出進程.west);
+    
+    \end{tikzpicture}
+    \caption{運算伺服器的架構}
+    \label{運算伺服器的架構}
+\end{figure}
+
+接收、運算、發送，共會用到三個進程，為了便於管理及使用，使用一個主進程啟動，再分裂出三個子進程，如圖~\ref{運算伺服器的進程分裂機制}。分裂完成後，主進程進入休眠狀態，當其中一個子進程崩潰時，主進程會被喚醒，進行錯誤處理或是重新產生崩潰的子進程。
+
+% 運算伺服器的進程分裂機制
+\begin{figure}[!h]
+    \centering
+    \begin{tikzpicture}
+    
+        \node[name=主進程, draw, align=center] {主進程};
+        \node[name=運算進程, draw, align=center, below=of 主進程] {運算進程};
+        \node[name=接收進程, draw, align=center, left=of 運算進程] {接收進程};
+        \node[name=發送進程, draw, align=center, right=of 運算進程] {發送進程};
+
+        \draw[->, shorten <=0mm,  shorten >=2mm] (主進程.south) -- (接收進程.north);
+        \draw[->, shorten <=0mm,  shorten >=1mm] (主進程.south) -- (運算進程.north);
+        \draw[->, shorten <=0mm,  shorten >=2mm] (主進程.south) -- (發送進程.north);
+
+    
+    \end{tikzpicture}
+    \caption{運算伺服器的進程分裂機制}
+    \label{運算伺服器的進程分裂機制}
+\end{figure}
+
+% 運算伺服器的子進程分裂
+\begin{figure}
+  \centering
+    \begin{lstlisting}[language=C++, caption={運算伺服器的子進程分裂}, showstringspaces=false,, basicstyle=\tiny,  label=code:運算伺服器的子進程分裂]
+#include "flow_compute_server.hpp"
+
+int main(){
+    
+    pid_t main_process_ID = getpid();
+    std::cout << "我是 main_process 進程: " << main_process_ID << std::endl ;
+
+
+    pid_t rece_process_ID = fork();	//產生接收進程
+
+    if (rece_process_ID == -1) {
+        std::cerr << "rece_process fork 失敗" << std::endl;
+        return 1;
+    }
+    else if (rece_process_ID == 0) {
+        std::cout << "我是 rece_process 進程: " << getpid() << std::endl ;
+        return 0;
+    }
+    else {
+        pid_t comp_process_ID = fork();	//產生運算進程
+        if (comp_process_ID == -1) {
+            std::cerr << "comp_process fork 失敗" << std::endl;
+            return 1;
+        }
+        else if (comp_process_ID == 0) {
+            std::cout << "我是 comp_process 進程: " << getpid() << std::endl ;
+            return 0;
+        }
+        else {
+            pid_t send_process_ID = fork();	//產生發送進程
+            if (send_process_ID == -1) {
+                std::cerr << "send_process fork 失敗" << std::endl;
+                return 1;
+            }
+            else if (send_process_ID == 0) {
+                std::cout << "我是 send_process 進程: " << getpid() << std::endl ;
+                return 0;
+            }
+        }
+    }
+    return 0;
+}
+    \end{lstlisting}
+\end{figure}
+
+
+\begin{figure}
+    \begin{lstlisting}
+    ./flow_compute_server
+    我是 main_process 進程: 18107
+    我是 rece_process 進程: 18108
+    我是 comp_process 進程: 18109
+    我是 send_process 進程: 18110
+    \end{lstlisting}
+    \caption{程式碼 \protect\ref{code:運算伺服器的子進程分裂}的輸出結果}
+\end{figure}
+
+
+
+
+
+
+
+
+
+\chapter{使用者介面}
+為了能提供跨平台，並且不須額外進行安裝的特性，本系統的使用者介面將在瀏覽器上實現，並且使用最新的webgpu技術來繪製圖形。然而，因為WebGPU尚未普及，許多平台及瀏覽器都還只支援WebGL。為了能夠兼容這樣的情況，我們需要同時實作WebGPU和WebGL兩種繪圖機制，以便在需要時進行切換。
+
+\section{檢查 WebGPU 和 WebGL 是否支援}
+在網頁加載完成之後，首先需要檢查兩種圖形API的支援情況，在此實作兩個檢查函數，並模組化，在需要時引入使用。
+
+% 兩種圖形API的檢查函數
+\begin{figure}[ht]
+  \centering
+    \begin{lstlisting}[language=JavaScript, caption={圖形API支援檢查函數}, showstringspaces=false, basicstyle=\tiny,  label=code:圖形API支援檢查函數]
+    
+//檢查 WebGPU 是否支援的函數
+export function webgpu_support_check(){
+        if(navigator.gpu){
+                console.log("WebGPU is support");
+                return 1;
+        }
+        else{
+                console.log("WebGPU is not support");
+                return 0;
+        }
+}
+
+
+//檢查 WebGL 是否支援的函數
+export function webgl_support_check(){
+        if(!!window.WebGLRenderingContext){
+                console.log("WebGL is support");
+                return 1;
+        }
+        else{
+                console.log("WebGL is not support");
+                return 0;
+
+        }
+
+    \end{lstlisting}
+\end{figure}
+
+
+
+
+
+
+
+\end{document}
